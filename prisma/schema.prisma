@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum ContentStatus {
+  DRAFT
+  PENDING_REVIEW
+  AI_REVIEW
+  ADMIN_REVIEW
+  NEEDS_CHANGES
+  PUBLISHED
+  REJECTED
+  UNPUBLISHED
+}
+
+enum ContentType {
+  LECTURE_NOTE
+  PAST_EXAM
+  MIDTERM
+  FINAL
+  MAKEUP
+  SUMMARY
+  PRESENTATION
+  WORKSHEET
+  FORMULA_SHEET
+  PRACTICE_EXAM
+  OTHER
+}
+
+enum Decision {
+  APPROVE
+  REJECT
+  REQUEST_CHANGES
+  UNPUBLISH
+}
+
+enum ScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  FAILED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String?
+  passwordHash String
+  role         Role       @default(USER)
+  createdAt    DateTime   @default(now())
+  materials    Material[]
+  favorites    Favorite[]
+}
+
+model Material {
+  id           String               @id @default(cuid())
+  title        String
+  description  String
+  institution  String?
+  department   String?
+  courseName   String
+  courseCode   String?
+  gradeOrTerm  String
+  academicYear String?
+  type         ContentType
+  tags         String[]
+  status       ContentStatus        @default(DRAFT)
+  publishedAt  DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  authorId     String
+  author       User                 @relation(fields: [authorId], references: [id])
+  file         MaterialFile?
+  events       ModerationEvent[]
+  decisions    ModerationDecision[]
+  aiReviews    AiReview[]
+  favorites    Favorite[]
+
+  @@index([status, createdAt])
+  @@index([courseName])
+}
+
+model MaterialFile {
+  id         String     @id @default(cuid())
+  materialId String     @unique
+  material   Material   @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  storageKey String
+  mimeType   String
+  sizeBytes  Int
+  sha256     String
+  scanStatus ScanStatus @default(PENDING)
+
+  @@index([sha256])
+}
+
+model ModerationEvent {
+  id         String        @id @default(cuid())
+  materialId String
+  material   Material      @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  actorId    String?
+  from       ContentStatus
+  to         ContentStatus
+  note       String?
+  createdAt  DateTime      @default(now())
+
+  @@index([materialId, createdAt])
+}
+
+model ModerationDecision {
+  id          String   @id @default(cuid())
+  materialId  String
+  material    Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  moderatorId String
+  decision    Decision
+  note        String?
+  createdAt   DateTime @default(now())
+}
+
+model AiReview {
+  id         String   @id @default(cuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  model      String
+  verdict    String
+  report     Json
+  createdAt  DateTime @default(now())
+}
+
+model Favorite {
+  userId     String
+  materialId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([userId, materialId])
+}
