@@ -1,8 +1,0 @@
-export class HttpError extends Error {
-  constructor(public status: number, message: string) { super(message); }
-}
-export function errorResponse(e: unknown) {
-  if (e instanceof HttpError) return Response.json({ error: e.message }, { status: e.status });
-  console.error(e);
-  return Response.json({ error: "Sunucu hatası" }, { status: 500 });
-}

@@ -30,8 +30,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (`.env.example` şablon olarak commit edilir)
 .env*
+!.env.example
+
+# geliştirme sırasında yerel dosya depolama (R2 kapalıyken kullanılır)
+/.local-storage/
 
 # vercel
 .vercel
