@@ -28,8 +28,14 @@ export async function putObject(Key: string, Body: Uint8Array, ContentType: stri
 export async function downloadResponse(Key: string, filename: string, mime: string) {
   const disposition = `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`;
   if (!useR2) {
-    const buf = await readFile(path.join(LOCAL, Key));
-    return new Response(new Uint8Array(buf), { headers: { "Content-Type": mime, "Content-Disposition": disposition } });
+    try {
+      const buf = await readFile(path.join(LOCAL, Key));
+      return new Response(new Uint8Array(buf), { headers: { "Content-Type": mime, "Content-Disposition": disposition } });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT")
+        return new Response("Dosya bulunamadı", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+      throw error;
+    }
   }
   const url = await getSignedUrl(s3(), new GetObjectCommand({ Bucket, Key, ResponseContentDisposition: disposition }), { expiresIn: 300 });
   return Response.redirect(url, 302);
@@ -37,7 +43,14 @@ export async function downloadResponse(Key: string, filename: string, mime: stri
 
 /** Dosyayı sunucu tarafında okur (ör. PDF kapak görseli üretmek için). */
 export async function getObject(Key: string): Promise<Uint8Array> {
-  if (!useR2) return new Uint8Array(await readFile(path.join(LOCAL, Key)));
+  if (!useR2) {
+    try {
+      return new Uint8Array(await readFile(path.join(LOCAL, Key)));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new Error("Dosya bulunamadı");
+      throw error;
+    }
+  }
   const res = await s3().send(new GetObjectCommand({ Bucket, Key }));
   if (!res.Body) throw new Error("Dosya bulunamadı");
   return res.Body.transformToByteArray();
