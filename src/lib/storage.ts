@@ -34,3 +34,11 @@ export async function downloadResponse(Key: string, filename: string, mime: stri
   const url = await getSignedUrl(s3(), new GetObjectCommand({ Bucket, Key, ResponseContentDisposition: disposition }), { expiresIn: 300 });
   return Response.redirect(url, 302);
 }
+
+/** Dosyayı sunucu tarafında okur (ör. PDF kapak görseli üretmek için). */
+export async function getObject(Key: string): Promise<Uint8Array> {
+  if (!useR2) return new Uint8Array(await readFile(path.join(LOCAL, Key)));
+  const res = await s3().send(new GetObjectCommand({ Bucket, Key }));
+  if (!res.Body) throw new Error("Dosya bulunamadı");
+  return res.Body.transformToByteArray();
+}

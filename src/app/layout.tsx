@@ -13,12 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Notmatik — Ders Kütüphanesi",
+  title: "Ders Kütüphanesi",
   description:
     "Ders notu, çıkmış sınav ve özetlerin paylaşıldığı, yönetici onaylı ders materyali kütüphanesi.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="tr"
