@@ -3,14 +3,22 @@ import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import Shell from "@/components/Shell";
 import { signIn } from "@/auth";
+import { prisma } from "@/lib/db";
 import { btn, input, muted } from "@/lib/ui";
 
-export default async function Giris({ searchParams }: { searchParams: Promise<{ hata?: string }> }) {
-  const { hata } = await searchParams;
+export default async function Giris({ searchParams }: { searchParams: Promise<{ hata?: string; onay?: string; kayit?: string }> }) {
+  const { hata, onay, kayit } = await searchParams;
   async function login(fd: FormData) {
     "use server";
+    const email = String(fd.get("email") ?? "").trim().toLowerCase();
+    const password = String(fd.get("password") ?? "");
+
+    // Onaysız hesap için anlaşılır mesaj (giriş denemesinden önce kontrol).
+    const existing = await prisma.user.findUnique({ where: { email }, select: { approved: true } });
+    if (existing && !existing.approved) redirect("/giris?onay=1");
+
     try {
-      await signIn("credentials", { email: String(fd.get("email")), password: String(fd.get("password")), redirectTo: "/" });
+      await signIn("credentials", { email, password, redirectTo: "/" });
     } catch (e) {
       if (e instanceof AuthError) redirect("/giris?hata=1");
       throw e;
@@ -20,7 +28,23 @@ export default async function Giris({ searchParams }: { searchParams: Promise<{ 
     <Shell>
       <div className="mx-auto max-w-sm">
         <h1 className="font-serif text-2xl font-semibold">Giriş yap</h1>
-        {hata && <p role="alert" className="mt-4 rounded bg-red-600/10 p-3 text-sm text-red-700 dark:text-red-400">E-posta veya şifre hatalı. Tekrar dene.</p>}
+
+        {kayit && (
+          <p className="mt-4 rounded bg-emerald-600/10 p-3 text-sm text-emerald-700 dark:text-emerald-400">
+            Hesabın oluşturuldu. Yönetici onayından sonra giriş yapabilirsin.
+          </p>
+        )}
+        {onay && (
+          <p role="alert" className="mt-4 rounded bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+            Hesabın henüz yönetici tarafından onaylanmadı. Onaylandığında giriş yapabilirsin.
+          </p>
+        )}
+        {hata && (
+          <p role="alert" className="mt-4 rounded bg-red-600/10 p-3 text-sm text-red-700 dark:text-red-400">
+            E-posta veya şifre hatalı. Tekrar dene.
+          </p>
+        )}
+
         <form action={login} className="mt-6 space-y-4">
           <label className="block text-sm font-medium">E-posta<input name="email" type="email" required autoComplete="email" className={`${input} mt-1`} /></label>
           <label className="block text-sm font-medium">Şifre<input name="password" type="password" required autoComplete="current-password" className={`${input} mt-1`} /></label>

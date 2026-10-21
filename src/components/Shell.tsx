@@ -15,6 +15,7 @@ export default async function Shell({ children }: { children: React.ReactNode })
             <>
               <Link href="/yukle" className={link}>Materyal yükle</Link>
               {user.role !== "USER" && <Link href="/admin" className={link}>İnceleme paneli</Link>}
+              {user.role === "ADMIN" && <Link href="/admin/kullanicilar" className={link}>Kullanıcılar</Link>}
               <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}>
                 <button className={link}>Çıkış yap ({user.name ?? "hesabım"})</button>
               </form>

@@ -34,6 +34,10 @@ Faz 1'in çekirdeği yerel ortamda çalışıyor: kayıt/giriş, materyal yükle
 
 Yetki kontrolü yalnızca arayüzde değil **sunucu tarafında** (`src/lib/auth/policy.ts`) yapılır. Arayüz sadece düğmeleri gizler.
 
+**Kullanıcı onayı:** Siteden kayıt olan herkes `approved = false` ile açılır ve yönetici
+onaylayana kadar **giriş yapamaz**. Yönetici, `/admin/kullanicilar` sayfasından bekleyen
+hesapları onaylar/reddeder ve dilerse elle yeni kullanıcı ekler (eklenen hesap doğrudan onaylıdır).
+
 ## İçerik durumları ve akış
 
 Ekip kararıyla "Yapay zekâ kontrolünde" durumu listeden çıkarıldı. Güncel durumlar:
@@ -135,7 +139,7 @@ npx prisma migrate dev --name init
 npm run dev                      # http://localhost:3000
 ```
 
-İlk yönetici hesabı: siteden kayıt ol, ardından `npx prisma studio` ile `User` tablosunda kendi satırının `role` alanını `ADMIN` yap.
+İlk yönetici hesabı: siteden kayıt ol, ardından `npx prisma studio` ile `User` tablosunda kendi satırının `role` alanını `ADMIN` yap. Sonraki kullanıcıları `/admin/kullanicilar` sayfasından onaylayabilir veya elle ekleyebilirsin.
 
 ### Ortam değişkenleri
 

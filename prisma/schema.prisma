@@ -58,6 +58,7 @@ model User {
   name         String?
   passwordHash String
   role         Role       @default(USER)
+  approved     Boolean    @default(false) // yönetici onayı olmadan giriş yapılamaz
   createdAt    DateTime   @default(now())
   materials    Material[]
   favorites    Favorite[]

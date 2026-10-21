@@ -18,7 +18,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await prisma.user.findUnique({ where: { email: p.data.email.toLowerCase() } });
         if (!user) return null;
         const ok = await bcrypt.compare(p.data.password, user.passwordHash);
-        return ok ? { id: user.id, email: user.email, name: user.name } : null;
+        if (!ok || !user.approved) return null; // yönetici onayı yoksa giriş yapılamaz
+        return { id: user.id, email: user.email, name: user.name };
       },
     }),
   ],
