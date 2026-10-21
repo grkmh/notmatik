@@ -8,6 +8,7 @@ const Login = z.object({ email: z.string().email(), password: z.string().min(1) 
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
+  trustHost: true, // Vercel/tünel arkasında host doğrulaması için
   pages: { signIn: "/giris" },
   providers: [
     Credentials({

@@ -66,8 +66,12 @@ export async function getThumbnail(file: { storageKey: string; sha256: string })
     try {
       const pdf = await getObject(file.storageKey);
       const webp = await renderFirstPage(pdf);
-      await mkdir(CACHE_DIR, { recursive: true });
-      await writeFile(cacheFile, webp);
+      try {
+        await mkdir(CACHE_DIR, { recursive: true });
+        await writeFile(cacheFile, webp);
+      } catch {
+        // Önbellek yazılamazsa (ör. salt-okunur sunucu) yine de görseli döndür.
+      }
       return webp;
     } finally {
       release();
