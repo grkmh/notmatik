@@ -3,28 +3,74 @@ import { useState } from "react";
 import { TYPE_LABELS } from "@/lib/labels";
 import { btn, input, muted } from "@/lib/ui";
 
+type UploadResult = { id: string; error?: string };
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block text-sm font-medium">{label}<div className="mt-1 font-normal">{children}</div></label>;
 }
 
-export default function UploadForm() {
+export default function UploadForm({ maxBytes }: { maxBytes: number }) {
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const maxMb = Math.round(maxBytes / 1048576);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setBusy(true); setError("");
+    setError("");
+    setProgress(0);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+
+    const file = fd.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      setError("Bir dosya seçmelisin.");
+      return;
+    }
+    if (file.size > maxBytes) {
+      setError(
+        `Dosya çok büyük (${(file.size / 1048576).toFixed(1)} MB). En fazla ${maxMb} MB yükleyebilirsin.`,
+      );
+      return;
+    }
+
+    setBusy(true);
     try {
-      const r = await fetch("/api/materials", { method: "POST", body: new FormData(e.currentTarget) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error ?? "Yükleme başarısız");
-      const s = await fetch(`/api/materials/${j.id}/submit`, { method: "POST" });
-      if (!s.ok) throw new Error((await s.json().catch(() => ({}))).error ?? "İncelemeye gönderilemedi");
+      // XHR: yükleme yüzdesini gösterebilmek için (fetch upload ilerlemesi vermez).
+      const uploaded = await new Promise<UploadResult>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/materials");
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 100));
+        };
+        xhr.onload = () => {
+          let body: UploadResult | null = null;
+          try {
+            body = JSON.parse(xhr.responseText) as UploadResult;
+          } catch {
+            body = null;
+          }
+          if (xhr.status >= 200 && xhr.status < 300 && body?.id) resolve(body);
+          else reject(new Error(body?.error ?? `Yükleme başarısız (HTTP ${xhr.status})`));
+        };
+        xhr.onerror = () => reject(new Error("Ağ hatası; bağlantını kontrol et."));
+        xhr.send(fd);
+      });
+
+      setProgress(100);
+      const submit = await fetch(`/api/materials/${uploaded.id}/submit`, { method: "POST" });
+      if (!submit.ok) {
+        const j = (await submit.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "İncelemeye gönderilemedi");
+      }
+      form.reset();
       setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bir hata oluştu");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (done) return (
@@ -55,14 +101,26 @@ export default function UploadForm() {
         </select>
       </Field>
       <Field label="Etiketler (virgülle ayır)"><input name="tags" placeholder="integral, türev" className={input} /></Field>
-      <Field label="Dosya (PDF, DOCX veya PPTX, en fazla 25 MB)">
+      <Field label={`Dosya (PDF, DOCX veya PPTX, en fazla ${maxMb} MB)`}>
         <input name="file" type="file" required accept=".pdf,.docx,.pptx" className="text-sm" />
       </Field>
       <label className="flex gap-2 text-sm">
         <input type="checkbox" required className="mt-1" />
         <span>Bu materyali paylaşma hakkına sahibim ve telif hakkı ihlali içermediğini onaylıyorum.</span>
       </label>
-      <button disabled={busy} className={btn}>{busy ? "Yükleniyor…" : "Yükle ve incelemeye gönder"}</button>
+
+      {busy && (
+        <div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+            <div className="h-full bg-blue-700 transition-all" style={{ width: `${progress}%` }} />
+          </div>
+          <p className={`mt-1 text-xs ${muted}`}>Yükleniyor… %{progress}</p>
+        </div>
+      )}
+
+      <button disabled={busy} className={btn}>
+        {busy ? `Yükleniyor… %${progress}` : "Yükle ve incelemeye gönder"}
+      </button>
     </form>
   );
 }

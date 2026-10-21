@@ -5,5 +5,6 @@ import UploadForm from "./UploadForm";
 
 export default async function Yukle() {
   if (!(await auth())?.user?.id) redirect("/giris");
-  return <Shell><UploadForm /></Shell>;
+  const maxBytes = Number(process.env.MAX_UPLOAD_BYTES ?? 26214400);
+  return <Shell><UploadForm maxBytes={maxBytes} /></Shell>;
 }
